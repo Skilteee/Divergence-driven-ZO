@@ -1,6 +1,6 @@
 Implementation of the divergence-driven zeroth-order optimization.
 
-You can reproduce the results in the paper by running.
+You can reproduce the results in the paper by running. There are still some bugs when applying fo for \gamma searching, which may cause the memory to keep increasing during training.
 ```bash
 # do not involve \gamma
 MODEL=facebook/opt-2.7b TASK=SST2 MODE=ft LR=1e-6 EPS=1e-3 SEED=42 STEPS=4000 bash mezo.sh
