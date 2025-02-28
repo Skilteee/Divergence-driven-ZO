@@ -783,6 +783,9 @@ class OurTrainer(Trainer):
         # Check if saved optimizer or scheduler states exist
         self._load_optimizer_and_scheduler(resume_from_checkpoint)
 
+        if args.trainer == 'zo':
+            lr_lambda = lambda step: 1 - self.state.global_step / (2 * args.max_steps)
+            self.lr_scheduler = LambdaLR(self.optimizer, lr_lambda)
         # important: at this point:
         # self.model         is the Transformers Model
         # self.model_wrapped is DDP(Transformers Model), Deepspeed(Transformers Model), etc.
@@ -908,9 +911,7 @@ class OurTrainer(Trainer):
         self.accuracy = []
 
 
-        if args.trainer == 'zo':
-            lr_lambda = lambda step: 1 - self.state.global_step / (2 * args.max_steps)
-            self.lr_scheduler = LambdaLR(self.optimizer, lr_lambda)
+
 
         print('task name:', self.args.task_name)
         # s = torch.load('/home/qitao/PeZO-main-raw/large_models/result/SST2-opt2p7b-mezo-ft-29998-16-1e-7-1e-3-0/pytorch_model.bin')
