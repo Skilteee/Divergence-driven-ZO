@@ -230,7 +230,7 @@ def get_nvidia_smi_output():
         return "nvidia-smi command not found. Ensure NVIDIA drivers are installed."
 
 
-class TPGM(nn.Module):
+class DiZO(nn.Module):
     def __init__(self, model, norm_mode, exclude_list=[]) -> None:
         super().__init__()
         self.norm_mode = norm_mode
@@ -528,7 +528,7 @@ class TPGM(nn.Module):
             return pgm_loss, copy_model
 
 
-class tpgm_trainer():
+class dizo_trainer():
     def __init__(
             self,
             base_model,
@@ -544,19 +544,19 @@ class tpgm_trainer():
         self.max_iters = max_iters
         # self.max_iters = 20
         self.exclude_list = exclude_list
-        self.tpgm = TPGM(base_model, norm_mode=norm_mode, exclude_list=exclude_list).to(base_model.device)
+        self.dizo = DiZO(base_model, norm_mode=norm_mode, exclude_list=exclude_list).to(base_model.device)
         self.pre_trained = base_model
-        self.pgm_optimizer = torch.optim.Adam(self.tpgm.parameters(), lr=self.proj_lr)
+        self.pgm_optimizer = torch.optim.Adam(self.dizo.parameters(), lr=self.proj_lr)
         self.pgmloader = pgmloader
         self.dataset_iterator = iter(self.pgmloader)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.i = 0
 
-    def tpgm_zo_iters(self, model, base_model, apply=False):
+    def dizo_zo_iters(self, model, base_model, apply=False):
         if not apply:
             self.count = 0
-            self.tpgm = self.tpgm.to(self.device)
-            self.tpgm.init = True
+            self.dizo = self.dizo.to(self.device)
+            self.dizo.init = True
             while self.count < self.max_iters:
 
                 try:
@@ -568,17 +568,17 @@ class tpgm_trainer():
                 for each in data:
                     data[each] = data[each].to(self.device)
 
-                self.tpgm.zo_forward(model, base_model, x=data)
-                self.tpgm.init = False
+                self.dizo.zo_forward(model, base_model, x=data)
+                self.dizo.init = False
                 self.count += 1
 
-        self.tpgm.zo_forward(model, self.pre_trained, apply=True)
+        self.dizo.zo_forward(model, self.pre_trained, apply=True)
         self.i += 1
 
-    def tpgm_iters(self, model, base_model, apply=False, quant=False):
+    def dizo_iters(self, model, base_model, apply=False, quant=False):
         if not apply:
             self.count = 0
-            self.tpgm = self.tpgm.to(self.device)
+            self.dizo = self.dizo.to(self.device)
 
             while self.count < self.max_iters:
 
@@ -593,14 +593,14 @@ class tpgm_trainer():
                 # data = self._prepare_inputs(data)
 
 
-                pgm_loss, copy_model = self.tpgm(model, base_model, x=data, quant=quant)
+                pgm_loss, copy_model = self.dizo(model, base_model, x=data, quant=quant)
                 self.pgm_optimizer.zero_grad()
                 pgm_loss.backward()
                 self.pgm_optimizer.step()
                 self.count += 1
                 copy_model = copy_model.cpu()
 
-        self.tpgm(model, self.pre_trained, apply=True)
+        self.dizo(model, self.pre_trained, apply=True)
         self.i += 1
 
 
@@ -898,7 +898,7 @@ class OurTrainer(Trainer):
             for name, param in self.base_model.named_parameters():
                 if name in self.exclude_list:
                     param.data = param.data.to('cpu')
-            self.tpgm_trainer = tpgm_trainer(self.base_model, train_dataloader, 'l2norm', 0.1, 10,
+            self.dizo_trainer = dizo_trainer(self.base_model, train_dataloader, 'l2norm', 0.1, 10,
                                              self.exclude_list)
 
         else:
@@ -1341,15 +1341,12 @@ class OurTrainer(Trainer):
             else:
                 param.data = param.data - self._get_learning_rate() * (self.projected_grad * z)
 
-        if (self.state.global_step + 1) % 100  == 0 and args.enhanced:
+        if (self.state.global_step + 1) % 50  == 0 and args.enhanced:
 
             if args.enhanced == 'zo':
-                self.tpgm_trainer.tpgm_zo_iters(model, base_model=self.base_model)
+                self.dizo_trainer.dizo_zo_iters(model, base_model=self.base_model)
             else:
-                self.tpgm_trainer.tpgm_iters(model, base_model=self.base_model)
-
-        # else:
-        #     self.tpgm_trainer.tpgm_zo_iters(model, base_model=self.base_model, apply=True)
+                self.dizo_trainer.dizo_iters(model, base_model=self.base_model)
 
         self.lr_scheduler.step()
 
