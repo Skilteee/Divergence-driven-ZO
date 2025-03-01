@@ -15,5 +15,5 @@ You can search for the keyword `DiZO` to find the parts related to divergence-dr
 Some tips for training:
 * `ZO` is sensitive to hyperparameter settings (including seeds).
 * For `DiZO`, in easier datasets (e.g. SST-2), you can apply more aggressive projection, i.e., larger projection scalar or more frequent projection learning, and vice versa.
-* Among all the hyperparameters in `DiZO`: clip range, projection updating cycle, and learning rate in projection learning have a larger influence on the performance.
+* Among all the hyperparameters in `DiZO`: clip range, projection updating cycle, and step size in projection learning have a larger influence on the performance.
 
